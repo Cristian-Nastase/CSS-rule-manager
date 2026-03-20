@@ -329,7 +329,6 @@ void Box::printBox(char * &text, const Color &obj) {
     int p_left = padding[3];
 
     int contentWidth = width - 2 * border - m_left - m_right;
-    system("clear");
 
     std::cout<<"\n";
 
@@ -344,7 +343,7 @@ void Box::printBox(char * &text, const Color &obj) {
     // bottom of content
     printPadding(contentWidth, m_left, m_right, p_bottom);
     printBorder(contentWidth, m_left, m_right);
-    printMargin(contentWidth, m_bottom);
+    printMargin(width, m_bottom);
 
     std::cout<<"\n";
 }
