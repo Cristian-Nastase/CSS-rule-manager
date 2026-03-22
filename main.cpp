@@ -13,13 +13,13 @@ private:
     static int noColors;
     static const std::map<char, std::string> colorMap;
     char currentColor;
-    bool active;
     int id;
+    float opacity;
 
     static void resetColor();
 public:
     Color();
-    Color(char currentColor, bool active);
+    Color(char currentColor, float opacity);
     Color(const Color& obj);
     Color& operator=(const Color& obj);
     ~Color();
@@ -48,17 +48,17 @@ int Color::noColors = 0;
 
 Color::Color() : id(noColors++) {;
     currentColor = 'W';
-    active = true;
+    opacity = 1.0;
 }
 
-Color::Color(char currentColor, bool active) : id(noColors++) {
+Color::Color(char currentColor, float opacity) : id(noColors++) {
     this->currentColor = currentColor;
-    this->active = active;
+    this->opacity = opacity;
 }
 
 Color::Color(const Color& obj) : id(noColors++) {
     this->currentColor = obj.currentColor;
-    this->active = obj.active;
+    this->opacity = obj.opacity;
 }
 
 Color& Color::operator=(const Color& obj) {
@@ -67,7 +67,7 @@ Color& Color::operator=(const Color& obj) {
     }
 
     this->currentColor = obj.currentColor;
-    this->active = obj.active;
+    this->opacity = obj.opacity;
 
     return *this;
 }
@@ -99,8 +99,7 @@ std::istream& operator>>(std::istream& in, Color& obj) {
 
     std::cout<<"Select a color: ";
 
-    unsigned long option;
-    bool valid = false;
+    int option;
 
     while (!(in >> option) || option == 0 || option > options.size()) {
         std::cout << "Not a possible option, try again\n";
@@ -112,12 +111,18 @@ std::istream& operator>>(std::istream& in, Color& obj) {
 
     obj.setCurrentColor(colorChoosed);
 
+    std::cout<<"Enter the opacity (float): ";
+    in>>obj.opacity;
+    in.ignore();
+
     return in;
 }
 
 
 std::ostream& operator<<(std::ostream& out, const Color& obj) {
     out<<obj.getCurrentColor();
+    out<<"\n";
+    out<<"Opacity: "<<obj.opacity;
     return out;
 }
 
@@ -126,8 +131,10 @@ void Color::resetColor() {
 }
 
 void Color::printColored(const char* text) {
-    if (!this->active)
+    if (this->opacity < 0.1f) {
+        std::cout<<"Opacity too low to print.";
         return;
+    }
 
     std::string color = colorMap.at(this->currentColor);
 
@@ -146,6 +153,8 @@ private:
     int* padding;
     int* margin;
     int border;
+    double aspectRatio;
+    int textLength;
 
     static int* returnVector(int value);
 
@@ -169,13 +178,14 @@ public:
     void setPadding(int* padding);
     void setMargin(int* margin);
     void setBorder(int border);
+    void setTextLength(int textLength);
 
 
     friend std::istream& operator>>(std::istream& in, Box& obj);
     friend std::ostream& operator<<(std::ostream& out, const Box& obj);
 
     void printBox(char* &text, Color& obj);
-    int returnTotalWidth(char* text);
+    int returnTotalWidth();
     int returnTotalHeight();
 };
 
@@ -195,6 +205,8 @@ Box::Box() : id(noBoxes++) {
     padding = returnVector(1);
     margin = returnVector(1);
     border = 1;
+    aspectRatio = 1.0;
+    textLength = 0;
 }
 
 Box::Box(int* padding, int* margin, int border) : id(noBoxes++) {
@@ -209,6 +221,9 @@ Box::Box(int* padding, int* margin, int border) : id(noBoxes++) {
     }
 
     this->border = border;
+    this->textLength = 0;
+
+    aspectRatio = (double)returnTotalWidth() / returnTotalHeight();
 }
 
 Box::Box(const Box &obj) : id(noBoxes++) {
@@ -223,6 +238,8 @@ Box::Box(const Box &obj) : id(noBoxes++) {
     }
 
     this->border = obj.border;
+    this->textLength = obj.textLength;
+    this->aspectRatio = obj.aspectRatio;
 }
 
 Box& Box::operator=(const Box &obj) {
@@ -239,6 +256,8 @@ Box& Box::operator=(const Box &obj) {
     }
 
     this->border = obj.border;
+    this->textLength = obj.textLength;
+    this->aspectRatio = obj.aspectRatio;
 
     return *this;
 }
@@ -285,6 +304,11 @@ void Box::setBorder(int border) {
     this->border = border;
 }
 
+void Box::setTextLength(int textLength) {
+    this->textLength = textLength;
+    this->aspectRatio = (double)returnTotalWidth() / returnTotalHeight();
+}
+
 void Box::readInt(std::istream& in, int& field) {
 
     int temp;
@@ -328,13 +352,15 @@ std::ostream& operator<<(std::ostream& out, const Box& obj) {
     }
 
     out<<"\n";
-    out<<"Border: "<<obj.border;
+    out<<"Border: "<<obj.border<<"\n";
+
+    out<<"Aspect ratio: "<<obj.aspectRatio<<"\n";
 
     return out;
 }
 
-int Box::returnTotalWidth(char* text) {
-    return padding[1] + margin[1] + padding[3] + margin[3] + strlen(text) + 2 * border;
+int Box::returnTotalWidth() {
+    return padding[1] + margin[1] + padding[3] + margin[3] + textLength + 2 * border;
 }
 
 int Box::returnTotalHeight() {
@@ -400,7 +426,7 @@ void Box::printContent(char *text, int m_left, int m_right, int p_left, int p_ri
 // margin, padding: 0-top 1-right 2-bottom 3-left
 void Box::printBox(char * &text, Color &obj) {
     int i, j;
-    int width = this->returnTotalWidth(text);
+    int width = this->returnTotalWidth();
 
     int m_top = margin[0];
     int m_right = margin[1];
@@ -422,7 +448,6 @@ void Box::printBox(char * &text, Color &obj) {
     printPadding(contentWidth, m_left, m_right, p_top);
 
     printContent(text, m_left, m_right, p_left, p_right, obj);
-
 
     // bottom of content
     printPadding(contentWidth, m_left, m_right, p_bottom);
@@ -503,6 +528,8 @@ char* Element::testEmptyString(char* text) {
 
 Element::Element(char* text, char* className, char* idName, bool isColored) : boxModel(new Box), color(new Color), id(noElements++) {
     this->text = testEmptyString(text);
+    this->boxModel->setTextLength(strlen(text));
+
     this->className = testEmptyString(className);
     this->idName = testEmptyString(idName);
 
@@ -623,6 +650,7 @@ void Element::setColor(Color *color) {
 void Element::setBox(Box *box) {
     delete this->boxModel;
     boxModel = box;
+    boxModel->setTextLength(strlen(this->text));
 }
 
 void Element::readString(std::istream& in, std::string textToPrint, char*& member) {
@@ -645,6 +673,7 @@ std::istream& operator>>(std::istream& in, Element& obj) {
 
     std::cout<<"\n(Box model): \n";
     in>>*obj.boxModel;
+    obj.boxModel->setTextLength(strlen(obj.text));
 
     std::cout<<"\n(Color): \n";
     in>>*obj.color;
@@ -986,7 +1015,7 @@ public:
 
 void Menu::printGoodbye() {
     Element element("Goodbye!", "", "", true);
-    Color* color = new Color('R', true);
+    Color* color = new Color('R', 1.0);
     element.setColor(color);
     element.printElement();
 }
