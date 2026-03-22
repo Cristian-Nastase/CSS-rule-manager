@@ -13,7 +13,7 @@ private:
     static int noColors;
     static const std::map<char, std::string> colorMap;
     char currentColor;
-    int id;
+    const int id;
     float opacity;
 
     static void resetColor();
@@ -149,7 +149,7 @@ void Color::printColored(const char* text) {
 class Box {
 private:
     static int noBoxes;
-    int id;
+    const int id;
     int* padding;
     int* margin;
     int border;
@@ -470,7 +470,7 @@ private:
     bool isColored;
     Box* boxModel;
     Color* color;
-    int id;
+    const int id;
 
     char* returnEmptyString();
     char* testEmptyString(char* text);
@@ -708,7 +708,7 @@ class Selector {
         char type;
         std::vector<Element> elements;
         bool isEmpty;
-        int id;
+        const int id;
 
         static bool validSelector(char* string);
 
