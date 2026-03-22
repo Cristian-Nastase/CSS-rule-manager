@@ -4,7 +4,9 @@
 #include <cstring>
 #include <limits>
 
+
 // color class
+
 
 class Color {
 private:
@@ -22,11 +24,12 @@ public:
     Color& operator=(const Color& obj);
     ~Color();
 
+    char getCurrentColor() const;
+
+    void setCurrentColor(char color);
+
     friend std::istream& operator>>(std::istream& in, Color& obj);
     friend std::ostream& operator<<(std::ostream& out, const Color& obj);
-
-    char getCurrentColor() const;
-    void setCurrentColor(char color);
 
     void printColored(const char* text);
 };
@@ -42,34 +45,6 @@ const std::map<char, std::string> Color::colorMap = {
 };
 
 int Color::noColors = 0;
-
-void Color::resetColor() {
-    std::cout<<"\033[0m";
-}
-
-void Color::printColored(const char* text) {
-    if (!this->active)
-        return;
-
-    std::string color = colorMap.at(this->currentColor);
-
-    std::cout<<color<<text;
-    resetColor();
-}
-
-char Color::getCurrentColor() const {
-    return this->currentColor;
-}
-
-void Color::setCurrentColor(char color) {
-    if (!colorMap.count(color)) {
-        std::cout<<"Not a registered color, defaults to white -> "<<color;
-        this->currentColor = 'W';
-        return;
-    }
-
-    this->currentColor = color;
-}
 
 Color::Color() : id(noColors++) {;
     currentColor = 'W';
@@ -98,7 +73,21 @@ Color& Color::operator=(const Color& obj) {
 }
 
 Color::~Color() {
-    return;
+    noColors--;
+}
+
+char Color::getCurrentColor() const {
+    return this->currentColor;
+}
+
+void Color::setCurrentColor(char color) {
+    if (!colorMap.count(color)) {
+        std::cout<<"Not a registered color, defaults to white -> "<<color;
+        this->currentColor = 'W';
+        return;
+    }
+
+    this->currentColor = color;
 }
 
 std::istream& operator>>(std::istream& in, Color& obj) {
@@ -132,6 +121,20 @@ std::ostream& operator<<(std::ostream& out, const Color& obj) {
     return out;
 }
 
+void Color::resetColor() {
+    std::cout<<"\033[0m";
+}
+
+void Color::printColored(const char* text) {
+    if (!this->active)
+        return;
+
+    std::string color = colorMap.at(this->currentColor);
+
+    std::cout<<color<<text;
+    resetColor();
+}
+
 
 // box class
 
@@ -159,13 +162,6 @@ public:
     Box& operator=(const Box &obj);
     ~Box();
 
-    friend std::istream& operator>>(std::istream& in, Box& obj);
-    friend std::ostream& operator<<(std::ostream& out, const Box& obj);
-
-    void printBox(char* &text, Color& obj);
-    int returnTotalWidth(char* text);
-    int returnTotalHeight();
-
     const int* getPadding() const;
     const int* getMargin() const;
     int getBorder() const;
@@ -173,6 +169,14 @@ public:
     void setPadding(int* padding);
     void setMargin(int* margin);
     void setBorder(int border);
+
+
+    friend std::istream& operator>>(std::istream& in, Box& obj);
+    friend std::ostream& operator<<(std::ostream& out, const Box& obj);
+
+    void printBox(char* &text, Color& obj);
+    int returnTotalWidth(char* text);
+    int returnTotalHeight();
 };
 
 int Box::noBoxes = 0;
@@ -185,14 +189,6 @@ int* Box::returnVector(int value) {
     }
 
     return vector;
-}
-
-int Box::returnTotalWidth(char* text) {
-    return padding[1] + margin[1] + padding[3] + margin[3] + strlen(text) + 2 * border;
-}
-
-int Box::returnTotalHeight() {
-    return padding[0] + padding[2] + margin[0] + margin[2] + 1;
 }
 
 Box::Box() : id(noBoxes++) {
@@ -261,6 +257,34 @@ Box::~Box() {
     }
 }
 
+const int *Box::getPadding() const {
+    return padding;
+}
+
+const int* Box::getMargin() const {
+    return margin;
+}
+
+int Box::getBorder() const {
+    return this->border;
+}
+
+void Box::setPadding(int *padding) {
+    for (int i = 0; i < 4; i++) {
+        this->padding[i] = padding[i];
+    }
+}
+
+void Box::setMargin(int *margin) {
+    for (int i = 0; i < 4; i++) {
+        this->margin[i] = margin[i];
+    }
+}
+
+void Box::setBorder(int border) {
+    this->border = border;
+}
+
 void Box::readInt(std::istream& in, int& field) {
 
     int temp;
@@ -309,32 +333,12 @@ std::ostream& operator<<(std::ostream& out, const Box& obj) {
     return out;
 }
 
-const int *Box::getPadding() const {
-    return padding;
+int Box::returnTotalWidth(char* text) {
+    return padding[1] + margin[1] + padding[3] + margin[3] + strlen(text) + 2 * border;
 }
 
-const int* Box::getMargin() const {
-    return margin;
-}
-
-int Box::getBorder() const {
-    return this->border;
-}
-
-void Box::setPadding(int *padding) {
-    for (int i = 0; i < 4; i++) {
-        this->padding[i] = padding[i];
-    }
-}
-
-void Box::setMargin(int *margin) {
-    for (int i = 0; i < 4; i++) {
-        this->margin[i] = margin[i];
-    }
-}
-
-void Box::setBorder(int border) {
-    this->border = border;
+int Box::returnTotalHeight() {
+    return padding[0] + padding[2] + margin[0] + margin[2] + 1;
 }
 
 void Box::printMargin(int width, int lines) const {
@@ -455,16 +459,16 @@ public:
     Element& operator=(const Element& obj);
     ~Element();
 
-    friend std::istream& operator>>(std::istream& in, Element& obj);
-    friend std::ostream& operator<<(std::ostream& out, const Element& obj);
-
-    void printElement();
+    const char* getClassName() const;
+    const char* getIdName() const;
 
     void setClassName(char* string);
     void setIdName(char* string);
 
-    const char* getClassName() const;
-    const char* getIdName() const;
+    friend std::istream& operator>>(std::istream& in, Element& obj);
+    friend std::ostream& operator<<(std::ostream& out, const Element& obj);
+
+    void printElement();
 };
 
 int Element::noElements = 0;
@@ -476,6 +480,14 @@ char* Element::returnEmptyString() {
     return p;
 }
 
+Element::Element() : boxModel(new Box), color(new Color), id(noElements++) {
+    text = returnEmptyString();
+    className = returnEmptyString();
+    idName = returnEmptyString();
+
+    isColored = true;
+}
+
 char* Element::testEmptyString(char* text) {
     if (text == nullptr) {
         return returnEmptyString();
@@ -484,26 +496,6 @@ char* Element::testEmptyString(char* text) {
     char* copy = new char[strlen(text) + 1];
     strcpy(copy, text);
     return copy;
-}
-
-bool Element::stringValid(char *string) {
-    char blockedCharacters[100];
-    strcpy(blockedCharacters, "~!@$%^&*()+=,./';:?><[]{}|`#\\ \"");
-
-    for (int i = 0 ; i < strlen(string); i++) {
-        if (strchr(blockedCharacters, string[i]) != nullptr)
-            return false;
-    }
-
-    return true;
-}
-
-Element::Element() : boxModel(new Box), color(new Color), id(noElements++) {
-    text = returnEmptyString();
-    className = returnEmptyString();
-    idName = returnEmptyString();
-
-    isColored = true;
 }
 
 Element::Element(char* text, char* className, char* idName, bool isColored) : boxModel(new Box), color(new Color), id(noElements++) {
@@ -564,6 +556,58 @@ Element::~Element() {
     delete[] text;
 }
 
+const char *Element::getClassName() const {
+    return this->className;
+}
+
+const char *Element::getIdName() const {
+    return this->idName;
+}
+
+bool Element::stringValid(char *string) {
+    char blockedCharacters[100];
+    strcpy(blockedCharacters, "~!@$%^&*()+=,./';:?><[]{}|`#\\ \"");
+
+    for (int i = 0 ; i < strlen(string); i++) {
+        if (strchr(blockedCharacters, string[i]) != nullptr)
+            return false;
+    }
+
+    return true;
+}
+
+void Element::setClassName(char *string) {
+    delete[] this->className;
+
+    if (!stringValid(string)) {
+        std::cout<<"Class name invalid, will set to N/A.";
+
+        this->className = new char[4];
+        strcpy(className, "N/A");
+
+        return;
+    }
+
+    this->className = new char[strlen(string) + 1];
+    strcpy(this->className, string);
+}
+
+void Element::setIdName(char *string) {
+    delete[] this->idName;
+
+    if (!stringValid(string)) {
+        std::cout<<"Id name invalid, will set to N/A.";
+
+        this->idName = new char[4];
+        strcpy(idName, "N/A");
+
+        return;
+    }
+
+    this->idName = new char[strlen(string) + 1];
+    strcpy(this->idName, string);
+}
+
 void Element::readString(std::istream& in, std::string textToPrint, char*& member) {
     char *buffer = new char[256];
     std::cout<<textToPrint;
@@ -603,46 +647,6 @@ void Element::printElement() {
     this->boxModel->printBox(this->text, *this->color);
 }
 
-const char *Element::getClassName() const {
-    return this->className;
-}
-
-const char *Element::getIdName() const {
-    return this->idName;
-}
-
-void Element::setClassName(char *string) {
-    delete[] this->className;
-
-    if (!stringValid(string)) {
-        std::cout<<"Class name invalid, will set to N/A.";
-
-        this->className = new char[4];
-        strcpy(className, "N/A");
-
-        return;
-    }
-
-    this->className = new char[strlen(string) + 1];
-    strcpy(this->className, string);
-}
-
-void Element::setIdName(char *string) {
-    delete[] this->idName;
-
-    if (!stringValid(string)) {
-        std::cout<<"Id name invalid, will set to N/A.";
-
-        this->idName = new char[4];
-        strcpy(idName, "N/A");
-
-        return;
-    }
-
-    this->idName = new char[strlen(string) + 1];
-    strcpy(this->idName, string);
-}
-
 // selector class
 
 
@@ -667,16 +671,17 @@ class Selector {
         Selector& operator=(const Selector &obj);
         ~Selector();
 
-        void createElement();
-        void addElement(Element& element);
+        std::string getSelectorString() const;
+        void setSelectorString(char* string);
 
         friend std::istream& operator>>(std::istream& in, Selector& obj);
         friend std::ostream& operator<<(std::ostream& out, const Selector& obj);
 
-        std::string getSelectorString() const;
+        void createElement();
+        void addElement(Element& element);
 
         void verifyType();
-        void setSelectorString(char* string);
+
 
         std::vector<const Element*> returnTargetedElements();
 };
@@ -738,27 +743,6 @@ Selector& Selector::operator=(const Selector &obj) {
     return *this;
 }
 
-std::istream& operator>>(std::istream &in, Selector &obj) {
-    std::cout<<"Type what elements you want to select: ";
-
-    char buffer[256];
-    in>>buffer;
-
-    obj.setSelectorString(buffer);
-
-    return in;
-}
-
-std::ostream& operator<<(std::ostream &out, const Selector &obj) {
-    out<<"\nSelector: "<<obj.getSelectorString()<<"\nElements it affects: ";
-
-    for (int i = 0; i < obj.elements.size(); i++) {
-        out<<"Element"<<i<<": \n"<<obj.elements[i]<<"\n";
-    }
-
-    return out;
-}
-
 Selector::~Selector() {
     noSelector--;
     delete[] selectorString;
@@ -768,22 +752,16 @@ std::string Selector::getSelectorString() const {
     return this->selectorString;
 }
 
-void Selector::setSelectorString(char *string) {
-    delete[] selectorString;
+bool Selector::validSelector(char *string) {
+    char blockedCharacters[100];
+    strcpy(blockedCharacters, "~!@$%^&*()+=,/';:?><[]{}|`\\ \"");
 
-    if (!validSelector(string)) {
-        std::cout<<"Invalid selector entered, will target all elements as default.";
-        this->type = '*';
-
-        this->selectorString = new char[4];
-        strcpy(this->selectorString, "N/A");
-        return;
+    for (int i = 0 ; i < strlen(string); i++) {
+        if (strchr(blockedCharacters, string[i]) != nullptr)
+            return false;
     }
 
-    this->selectorString = new char[strlen(string) + 1];
-    strcpy(this->selectorString, string);
-
-    verifyType();
+    return true;
 }
 
 void Selector::verifyType() {
@@ -824,16 +802,44 @@ void Selector::verifyType() {
     delete[] copy;
 }
 
-bool Selector::validSelector(char *string) {
-    char blockedCharacters[100];
-    strcpy(blockedCharacters, "~!@$%^&*()+=,/';:?><[]{}|`\\ \"");
+void Selector::setSelectorString(char *string) {
+    delete[] selectorString;
 
-    for (int i = 0 ; i < strlen(string); i++) {
-        if (strchr(blockedCharacters, string[i]) != nullptr)
-            return false;
+    if (!validSelector(string)) {
+        std::cout<<"Invalid selector entered, will target all elements as default.";
+        this->type = '*';
+
+        this->selectorString = new char[4];
+        strcpy(this->selectorString, "N/A");
+        return;
     }
 
-    return true;
+    this->selectorString = new char[strlen(string) + 1];
+    strcpy(this->selectorString, string);
+
+    verifyType();
+}
+
+
+std::istream& operator>>(std::istream &in, Selector &obj) {
+    std::cout<<"Type what elements you want to select: ";
+
+    char buffer[256];
+    in>>buffer;
+
+    obj.setSelectorString(buffer);
+
+    return in;
+}
+
+std::ostream& operator<<(std::ostream &out, const Selector &obj) {
+    out<<"\nSelector: "<<obj.getSelectorString()<<"\nElements it affects: ";
+
+    for (int i = 0; i < obj.elements.size(); i++) {
+        out<<"Element"<<i<<": \n"<<obj.elements[i]<<"\n";
+    }
+
+    return out;
 }
 
 void Selector::createElement() {
@@ -883,24 +889,5 @@ std::vector<const Element*> Selector::returnTargetedElements() {
 }
 
 int main() {
-    Selector s;
-    std::cin>>s;
-
-    Element a("slauta", "class", "idName", true);
-
-
-    s.addElement(a);
-    s.addElement(a);
-
-    std::vector<const Element*> vector = s.returnTargetedElements();
-    if (vector.empty()) {
-        std::cout<<"No elements found.";
-    }
-    else {
-        for (int i = 0; i < vector.size(); i++) {
-            std::cout<<*vector[i]<<" ";
-        }
-    }
-
     return 0;
 }
