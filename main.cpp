@@ -461,9 +461,12 @@ public:
 
     const char* getClassName() const;
     const char* getIdName() const;
+    int getId() const;
 
     void setClassName(char* string);
     void setIdName(char* string);
+    void setColor(Color* color);
+    void setBox(Box* box);
 
     friend std::istream& operator>>(std::istream& in, Element& obj);
     friend std::ostream& operator<<(std::ostream& out, const Element& obj);
@@ -564,6 +567,10 @@ const char *Element::getIdName() const {
     return this->idName;
 }
 
+int Element::getId() const{
+    return id;
+}
+
 bool Element::stringValid(char *string) {
     char blockedCharacters[100];
     strcpy(blockedCharacters, "~!@$%^&*()+=,./';:?><[]{}|`#\\ \"");
@@ -608,6 +615,16 @@ void Element::setIdName(char *string) {
     strcpy(this->idName, string);
 }
 
+void Element::setColor(Color *color) {
+    delete this->color;
+    this->color = color;
+}
+
+void Element::setBox(Box *box) {
+    delete this->boxModel;
+    boxModel = box;
+}
+
 void Element::readString(std::istream& in, std::string textToPrint, char*& member) {
     char *buffer = new char[256];
     std::cout<<textToPrint;
@@ -626,7 +643,10 @@ std::istream& operator>>(std::istream& in, Element& obj) {
     Element::readString(in, "Enter a class name: ", obj.className);
     Element::readString(in, "Enter an id: ", obj.idName);
 
+    std::cout<<"\n(Box model): \n";
     in>>*obj.boxModel;
+
+    std::cout<<"\n(Color): \n";
     in>>*obj.color;
 
     return in;
@@ -671,6 +691,8 @@ class Selector {
         Selector& operator=(const Selector &obj);
         ~Selector();
 
+        int getVectorSize() const;
+        char getType() const;
         std::string getSelectorString() const;
         void setSelectorString(char* string);
 
@@ -678,12 +700,15 @@ class Selector {
         friend std::ostream& operator<<(std::ostream& out, const Selector& obj);
 
         void createElement();
+        void listElements();
         void addElement(Element& element);
+        void removeElement(int index);
 
         void verifyType();
 
+        std::vector<Element*> returnTargetedElements();
 
-        std::vector<const Element*> returnTargetedElements();
+        void printElements();
 };
 
 int Selector::noSelector = 0;
@@ -746,6 +771,14 @@ Selector& Selector::operator=(const Selector &obj) {
 Selector::~Selector() {
     noSelector--;
     delete[] selectorString;
+}
+
+int Selector::getVectorSize() const {
+    return elements.size();
+}
+
+char Selector::getType() const {
+    return this->type;
 }
 
 std::string Selector::getSelectorString() const {
@@ -836,14 +869,14 @@ std::ostream& operator<<(std::ostream &out, const Selector &obj) {
     out<<"\nSelector: "<<obj.getSelectorString()<<"\nElements it affects: ";
 
     for (int i = 0; i < obj.elements.size(); i++) {
-        out<<"Element"<<i<<": \n"<<obj.elements[i]<<"\n";
+        out<<"Element"<<i+1<<": \n"<<obj.elements[i]<<"\n";
     }
 
     return out;
 }
 
 void Selector::createElement() {
-    std::cout<<"\nElement "<<this->elements.size() + 1<<": \n\n";
+    std::cout<<"\n[Element "<<this->elements.size() + 1<<"]: \n\n";
     Element e;
     std::cin>>e;
 
@@ -851,9 +884,41 @@ void Selector::createElement() {
     isEmpty = false;
 }
 
+void Selector::listElements() {
+    if (elements.empty()) {
+        std::cout<<"\nNo elements created.\n";
+        return;
+    }
+
+    for (int i = 0; i < elements.size(); i++) {
+        std::cout<<"\n- Element "<<i+1<<"\n";
+        std::cout<<elements[i]<<'\n';
+    }
+}
+
 void Selector::addElement(Element& element) {
     Element copy = element;
     this->elements.push_back(copy);
+}
+
+void Selector::removeElement(int index) {
+    std::vector<Element> copy;
+    for (int i = index + 1; i < this->elements.size(); i++) {
+        copy.push_back(elements[i]);
+    }
+
+    while (elements.size() != index) {
+        elements.pop_back();
+    }
+
+    while (!copy.empty()) {
+        this->elements.push_back(copy[copy.size() - 1]);
+        copy.pop_back();
+    }
+
+    if (elements.empty()) {
+        this->isEmpty = true;
+    }
 }
 
 bool Selector::checkClassName(const Element *element) const {
@@ -864,8 +929,8 @@ bool Selector::checkIdName(const Element *element) const {
     return !strcmp(element->getIdName(), this->selectorString);
 }
 
-std::vector<const Element*> Selector::returnTargetedElements() {
-    std::vector<const Element*> targetedElements;
+std::vector<Element*> Selector::returnTargetedElements() {
+    std::vector<Element*> targetedElements;
 
     if (this->type != '*') {
         for (int i = 0; i < this->elements.size(); i++) {
@@ -888,6 +953,284 @@ std::vector<const Element*> Selector::returnTargetedElements() {
     return targetedElements;
 }
 
+void Selector::printElements() {
+    if (this->elements.empty()) {
+        std::cout<<"No elements to print. \n";
+        return;
+    }
+    for (int i = 0; i < elements.size(); i++) {
+        elements[i].printElement();
+    }
+}
+
+class Menu {
+private:
+    Selector selectorObj;
+
+    Color* readColor();
+    Box* readBox();
+
+    void printGoodbye();
+public:
+    Menu() = default;
+    ~Menu() = default;
+
+    void run();
+    void playgroundMenu();
+    void descriptionMenu();
+    void removeElementsMenu();
+    void elementsMenu();
+    void valueMenu();
+    void selectorMenu();
+};
+
+void Menu::printGoodbye() {
+    Element element("Goodbye!", "", "", true);
+    Color* color = new Color('R', true);
+    element.setColor(color);
+    element.printElement();
+}
+
+void Menu::run() {
+    while (true) {
+        std::cout<<"\n~ Welcome to CSS playground ~\n";
+        std::cout<<"0. Exit\n";
+        std::cout<<"1. Enter the playground\n";
+        std::cout<<"2. Description\n\n";
+
+        int option;
+        std::cout<<"-> ";
+        std::cin>>option;
+        std::cin.ignore();
+
+        switch (option) {
+            case 0:
+                printGoodbye();
+                return;
+            case 1:
+                playgroundMenu();
+                break;
+            case 2:
+                descriptionMenu();
+                break;
+            default:
+                std::cout<<"Invalid option, try again. \n";
+        }
+    }
+}
+
+void Menu::playgroundMenu() {
+    while (true) {
+        std::cout<<"\n~ Playground ~\n";
+        std::cout<<"0. Exit\n";
+        std::cout<<"1. Elements\n";
+        std::cout<<"2. Selector\n";
+        std::cout<<"3. Print elements\n";
+
+        std::cout<<"\n-> ";
+        int option;
+        std::cin>>option;
+        std::cin.ignore();
+
+        switch (option) {
+            case 0:
+                return;
+            case 1:
+                elementsMenu();
+                break;
+            case 2:
+                selectorMenu();
+                break;
+            case 3:
+                selectorObj.printElements();
+                break;
+            default:
+                std::cout<<"Invalid option, try again.\n";
+        }
+    }
+}
+
+void Menu::descriptionMenu() {
+    std::cout<<"\n~ Description ~\n";
+    std::cout<<"\nThis project aims to simulate the rendering of a basic paragraph element, with it's box model and color contained in it.\nIt also has the feature to modify parts of the styling by class or id selectors.\n";
+}
+
+void Menu::removeElementsMenu() {
+    selectorObj.listElements();
+
+    if (selectorObj.getVectorSize() == 0) {
+        return;
+    }
+
+    while (true) {
+        std::cout<<"\nWhich element do you want to remove? -> ";
+        int option;
+        std::cin>>option;
+        std::cin.ignore();
+
+        if (!option || option < 0 || option > selectorObj.getVectorSize()) {
+            std::cout<<"Not a valid option, try again.\n";
+            continue;
+        }
+
+        selectorObj.removeElement(option - 1);
+        return;
+    }
+}
+
+void Menu::elementsMenu() {
+    while (true) {
+        std::cout<<"\n~ Elements ~ \n";
+        std::cout<<"0. Exit\n";
+        std::cout<<"1. Create element\n";
+        std::cout<<"2. List elements\n";
+        std::cout<<"3. Remove element\n";
+
+        std::cout<<"\n -> ";
+        int option;
+        std::cin>>option;
+
+        switch (option) {
+            case 0:
+                return;
+            case 1:
+                selectorObj.createElement();
+                break;
+            case 2:
+                selectorObj.listElements();
+                break;
+            case 3:
+                removeElementsMenu();
+                break;
+            default:
+                std::cout<<"Invalid option, try again\n";
+        }
+    }
+}
+
+Color* Menu::readColor() {
+    Color* color = new Color;
+    std::cin>>*color;
+    return color;
+}
+
+Box* Menu::readBox() {
+    Box* box = new Box;
+    std::cin>>*box;
+    return box;
+}
+
+void Menu::valueMenu() {
+    std::vector<Element*> elements = selectorObj.returnTargetedElements();
+
+    if (elements.empty()) {
+        std::cout<<"\n! No elements targeted.\n";
+        return;
+    }
+
+    for (int i = 0; i < elements.size(); i++) {
+        std::cout<<"\n- Element "<<i+1<<": \n\n"<<*elements[i]<<"\n";
+    }
+
+    while (true) {
+        std::cout<<"\nWhat do you want to change?\n";
+        std::cout<<"0. Nothing\n";
+        std::cout<<"1. Box Model\n";
+        std::cout<<"2. Color\n";
+
+        std::cout<<" -> ";
+        int option;
+        std::cin>>option;
+        std::cin.ignore();
+        std::cout<<"\n";
+
+        switch (option) {
+            case 0:
+                return;
+            case 1: {
+                Box* readBox = this->readBox();
+                for (int i = 0; i < elements.size(); i++) {
+                    Box* elementBox = new Box;
+                    *elementBox = *readBox;
+                    elements[i]->setBox(elementBox);
+                }
+                delete readBox;
+                break;
+            }
+            case 2: {
+                Color* readColor = this->readColor();
+                for (int i = 0; i < elements.size(); i++) {
+                    Color* elementColor = new Color;
+                    *elementColor = *readColor;
+                    elements[i]->setColor(elementColor);
+                }
+                delete readColor;
+                break;
+            }
+
+
+        }
+    }
+}
+
+void Menu::selectorMenu() {
+    while (true) {
+        std::cout<<"\n~ Selector ~\n";
+        std::cout<<"0. Exit\n";
+        std::cout<<"1. View string\n";
+        std::cout<<"2. Change string\n";
+        std::cout<<"3. View elements affected\n";
+        std::cout<<"4. Change values\n";
+
+        std::cout<<"\n-> ";
+        int option;
+        std::cin>>option;
+        std::cin.ignore();
+
+        switch (option) {
+            case 0:
+                return;
+            case 1:
+                std::cout<<"\nSelector: "<<selectorObj.getSelectorString()<<" (selector type: ";
+                switch (selectorObj.getType()) {
+                    case 'C':
+                            std::cout<<"Class";
+                            break;
+                    case 'I':
+                            std::cout<<"Id";
+                            break;
+                    default:
+                            std::cout<<"*";
+                }
+                std::cout<<")\n";
+                break;
+            case 2:
+                std::cin>>selectorObj;
+                break;
+            case 3: {
+                std::vector<Element*> elements = selectorObj.returnTargetedElements();
+
+                if (elements.empty()) {
+                    std::cout<<"\n! No elements targeted.\n";
+                    break;
+                }
+
+                for (int i = 0; i < elements.size(); i++) {
+                    std::cout<<"\n- Element "<<i<<": \n"<<*elements[i]<<"\n";
+                }
+            }
+                break;
+            case 4:
+                valueMenu();
+                break;
+            default:
+                std::cout<<"Invalid option, try again. \n";
+        }
+    }
+}
+
 int main() {
+    Menu menu;
+    menu.run();
     return 0;
 }
